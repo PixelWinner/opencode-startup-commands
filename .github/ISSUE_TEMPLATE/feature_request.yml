@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest an improvement or new capability
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests are welcome. External code contributions are not currently accepted.
+  - type: textarea
+    id: problem-or-use-case
+    attributes:
+      label: Problem or use case
+      description: Describe the problem to solve or the use case to support.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-behavior
+    attributes:
+      label: Proposed behavior
+      description: Describe how the plugin should behave.
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add optional examples or alternatives.
+    validations:
+      required: false
+  - type: checkboxes
+    id: duplicate-check
+    attributes:
+      label: Duplicate check
+      options:
+        - label: I searched existing open issues and did not find this request.
+          required: true

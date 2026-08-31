@@ -1,0 +1,62 @@
+{
+  "name": "opencode-startup-commands",
+  "version": "1.0.0",
+  "description": "Launch trusted background commands when OpenCode initializes a project or directory.",
+  "license": "MIT",
+  "author": {
+    "name": "Oleksandr Khoroshykh (PixelWinner)",
+    "url": "https://github.com/PixelWinner"
+  },
+  "repository": "git+https://github.com/PixelWinner/opencode-startup-commands.git",
+  "homepage": "https://github.com/PixelWinner/opencode-startup-commands#readme",
+  "bugs": {
+    "url": "https://github.com/PixelWinner/opencode-startup-commands/issues"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "startup",
+    "automation",
+    "background-process",
+    "typescript"
+  ],
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "type": "module",
+  "main": "./dist/server.js",
+  "types": "./dist/server.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    }
+  },
+  "engines": {
+    "opencode": "1.18.x"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.type-tests.json",
+    "compile": "tsc -p tsconfig.json",
+    "package:check": "node ./scripts/release-package.mjs",
+    "verify:dist": "node ./scripts/verify-dist.mjs",
+    "release:check": "node ./scripts/release-check.mjs"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "1.18.25",
+    "@types/node": "22.13.9",
+    "typescript": "5.8.2"
+  }
+}
