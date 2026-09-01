@@ -31,6 +31,8 @@ const REQUIRED_PACKAGE_PATHS = [
   "dist/core.d.ts",
   "dist/logger.js",
   "dist/logger.d.ts",
+  "dist/process-tree.d.ts",
+  "dist/process-tree.js",
   "dist/server.js",
   "dist/server.d.ts",
   "dist/server-internal.js",

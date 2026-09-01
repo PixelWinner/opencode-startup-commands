@@ -84,6 +84,8 @@ describe("Configuration loading", () => {
           name: "Global Helper",
           executable: "  /opt/helper  ",
           args: ["", "  exact argument  "],
+          onExistingProcess: "skip",
+          stopOnExit: true,
           scope: "global",
           index: 0,
         },
@@ -115,12 +117,112 @@ describe("Configuration loading", () => {
           name: "Project Helper",
           executable: "project-helper",
           args: ["--project"],
+          onExistingProcess: "skip",
+          stopOnExit: true,
           scope: "project",
           projectRoot,
           index: 0,
         },
       ],
       diagnostics: [],
+    });
+  });
+
+  test.each([
+    {
+      configured: {},
+      expected: { onExistingProcess: "skip", stopOnExit: true },
+    },
+    {
+      configured: { onExistingProcess: "start", stopOnExit: false },
+      expected: { onExistingProcess: "start", stopOnExit: false },
+    },
+    {
+      configured: { onExistingProcess: "skip", stopOnExit: true },
+      expected: { onExistingProcess: "skip", stopOnExit: true },
+    },
+    {
+      configured: { onExistingProcess: "restart", stopOnExit: false },
+      expected: { onExistingProcess: "restart", stopOnExit: false },
+    },
+  ])("normalizes lifecycle policy %#", ({ configured, expected }) => {
+    const filePath = join(createTempDirectory(), "lifecycle.json");
+    writeConfig(
+      filePath,
+      JSON.stringify({
+        commands: [
+          {
+            name: "Lifecycle helper",
+            executable: "helper",
+            args: ["--watch"],
+            ...configured,
+          },
+        ],
+      }),
+    );
+
+    expect(loadConfigFile("global", filePath).commands).toEqual([
+      {
+        name: "Lifecycle helper",
+        executable: "helper",
+        args: ["--watch"],
+        ...expected,
+        scope: "global",
+        index: 0,
+      },
+    ]);
+  });
+
+  test.each([
+    { configured: { onExistingProcess: "replace" } },
+    { configured: { onExistingProcess: 1 } },
+    { configured: { onExistingProcess: null } },
+    { configured: { stopOnExit: "yes" } },
+    { configured: { stopOnExit: 1 } },
+    { configured: { stopOnExit: null } },
+  ])("isolates invalid lifecycle policy %#", ({ configured }) => {
+    const filePath = join(createTempDirectory(), "invalid-lifecycle.json");
+    writeConfig(
+      filePath,
+      JSON.stringify({
+        commands: [
+          {
+            name: "Invalid lifecycle",
+            executable: "invalid-helper",
+            args: [],
+            ...configured,
+          },
+          {
+            name: "Valid lifecycle",
+            executable: "valid-helper",
+            args: [],
+            onExistingProcess: "start",
+            stopOnExit: false,
+          },
+        ],
+      }),
+    );
+
+    expect(loadConfigFile("global", filePath)).toEqual({
+      commands: [
+        {
+          name: "Valid lifecycle",
+          executable: "valid-helper",
+          args: [],
+          onExistingProcess: "start",
+          stopOnExit: false,
+          scope: "global",
+          index: 1,
+        },
+      ],
+      diagnostics: [
+        {
+          scope: "global",
+          reason: "invalid-command",
+          index: 0,
+          name: "Invalid lifecycle",
+        },
+      ],
     });
   });
 
@@ -145,6 +247,8 @@ describe("Configuration loading", () => {
           name: "BOM Helper",
           executable: "helper",
           args: [],
+          onExistingProcess: "skip",
+          stopOnExit: true,
           scope: "global",
           index: 0,
         },
@@ -230,6 +334,8 @@ describe("Configuration loading", () => {
           name: "Retained Helper",
           executable: " helper ",
           args: ["--safe"],
+          onExistingProcess: "skip",
+          stopOnExit: true,
           scope: "global",
           index: 10,
         },

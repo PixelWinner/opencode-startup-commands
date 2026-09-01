@@ -40,6 +40,8 @@ const allowedPaths = [
   "dist/core.d.ts",
   "dist/logger.js",
   "dist/logger.d.ts",
+  "dist/process-tree.d.ts",
+  "dist/process-tree.js",
   "dist/server.js",
   "dist/server.d.ts",
   "dist/server-internal.js",
@@ -124,7 +126,7 @@ describe("package file contract", () => {
     }
   });
 
-  test("requires every path in the exact 13-file package", () => {
+  test("requires every path in the exact 15-file package", () => {
     for (const requiredPath of allowedPaths) {
       expect(() =>
         validatePackageFilePaths(

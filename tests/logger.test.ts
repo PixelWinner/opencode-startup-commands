@@ -147,6 +147,45 @@ const FILE_EVENT_CASES = [
     expected:
       'command.skipped scope=global index=6 name="Global helper" reason=duplicate',
   },
+  {
+    label: "project stop requested",
+    event: {
+      type: "command.stop-requested",
+      scope: "project",
+      index: 2,
+      name: "Project helper",
+      pid: 321,
+      trigger: "scope-disposed",
+    },
+    expected:
+      'command.stop-requested scope=project index=2 name="Project helper" pid=321 trigger=scope-disposed',
+  },
+  {
+    label: "global restart forced",
+    event: {
+      type: "command.stop-forced",
+      scope: "global",
+      index: 1,
+      name: "Global helper",
+      pid: 654,
+      trigger: "restart",
+    },
+    expected:
+      'command.stop-forced scope=global index=1 name="Global helper" pid=654 trigger=restart',
+  },
+  {
+    label: "root cleanup failed",
+    event: {
+      type: "command.stop-failed",
+      scope: "project",
+      index: 3,
+      name: "Failed helper",
+      trigger: "root-exited",
+      reason: "unconfirmed",
+    },
+    expected:
+      'command.stop-failed scope=project index=3 name="Failed helper" trigger=root-exited reason=unconfirmed',
+  },
 ] satisfies Array<{ label: string; event: LogEvent; expected: string }>;
 
 describe("Logger console output", () => {
@@ -169,6 +208,32 @@ describe("Logger console output", () => {
     expect(output.lines).toEqual([
       'startup-commands: spawned scope=global index=0 name="Lemonade Whisper" pid=123',
     ]);
+  });
+
+  test("sanitizes stop lifecycle names without exposing raw errors", () => {
+    const output = createConsole();
+    const directory = createTempDirectory();
+    const logger = createLogger({
+      console: output,
+      filePath: join(directory, "plugin.log"),
+    });
+    const secret = "SECRET_RAW_STOP_ERROR";
+
+    logger.write({
+      type: "command.stop-failed",
+      scope: "project",
+      index: 8,
+      name: "Failed\r\nhelper\u0000",
+      pid: 987,
+      trigger: "root-exited",
+      reason: "permission-denied",
+      rawError: new Error(secret),
+    } as LogEvent & { rawError: Error });
+
+    expect(output.lines).toEqual([
+      'startup-commands: stop failed scope=project index=8 name="Failed  helper " pid=987 trigger=root-exited reason=permission-denied',
+    ]);
+    expect(output.lines.join(" ")).not.toContain(secret);
   });
 
   test("writes fixed scope-aware configuration diagnostics", () => {

@@ -91,7 +91,7 @@ test("keeps the concise approved public structure", () => {
 
   const lineCount = readme.trimEnd().split(/\r?\n/).length;
   expect(lineCount).toBeGreaterThanOrEqual(100);
-  expect(lineCount).toBeLessThanOrEqual(120);
+  expect(lineCount).toBeLessThanOrEqual(180);
   expect(readme).toMatch(/unofficial[^\n]*not affiliated with[^\n]*OpenCode/i);
 });
 
@@ -105,15 +105,87 @@ test("documents strict JSON configuration in global and project locations", () =
   expect(readme).toMatch(/comments[^\n]*trailing commas[^\n]*(?:not|aren't)/i);
   expect(readme).toContain('"executable": "/absolute/path/to/helper"');
   expect(readme).toContain('"args": ["--watch"]');
+  expect(readme).toContain('"onExistingProcess": "skip"');
+  expect(readme).toContain('"stopOnExit": true');
+  expect(readme).toMatch(/`onExistingProcess`[^\n]*defaults? to `skip`/i);
+  expect(readme).toMatch(/`stopOnExit`[^\n]*defaults? to `true`/i);
+  expect(readme).toMatch(/`onExistingProcess`[^\n]*only[^\n]*`start`[^\n]*`skip`[^\n]*`restart`/i);
+  expect(readme).toMatch(/`stopOnExit`[^\n]*boolean/i);
+  expect(readme).toMatch(/invalid entr(?:y|ies)[^\n]*later valid entr(?:y|ies)/i);
 });
 
-test("documents global-first lifecycle and process-root deduplication", () => {
+test("documents existing-process policy behavior and replacement ordering", () => {
+  expect(readme).toMatch(/`start`[^\n]*additional[^\n]*separately owned[^\n]*record/i);
+  expect(readme).toMatch(/`skip`[^\n]*current owner[^\n]*oldest[^\n]*record/i);
+  expect(readme).toMatch(
+    /`skip`[^\n]*without changing[^\n]*creation-time[^\n]*`stopOnExit`/i,
+  );
+  expect(readme).toMatch(/`restart`[^\n]*all[^\n]*one replacement/i);
+  expect(readme).toMatch(/restart[^\n]*all plugin-owned[^\n]*records/i);
+  expect(readme).toMatch(/restart[^\n]*regardless of[^\n]*stopOnExit/i);
+  expect(readme).toMatch(
+    /replacement[^\n]*only after[^\n]*confirmed[^\n]*cleanup/i,
+  );
+});
+
+test("documents identity, duplicate precedence, and lifecycle-policy selection", () => {
   expect(readme).toMatch(/global[^\n]*before project/i);
-  expect(readme).toMatch(/global[^\n]*once per OpenCode process/i);
-  expect(readme).toMatch(/project[^\n]*once per normalized project root/i);
   expect(readme).toMatch(/identity[^\n]*executable[^\n]*ordered[^\n]*args/i);
+  expect(readme).toMatch(/project identit(?:y|ies)[^\n]*normalized root/i);
+  expect(readme).toMatch(/global identit(?:y|ies)[^\n]*shared[^\n]*OpenCode instances/i);
+  expect(readme).toMatch(
+    /`name`[^\n]*`onExistingProcess`[^\n]*`stopOnExit`[^\n]*not part of identity/i,
+  );
+  expect(readme).toMatch(/first within (?:each )?scope/i);
+  expect(readme).toMatch(
+    /global[^\n]*first[^\n]*duplicate[^\n]*both policies[^\n]*before policy evaluation/i,
+  );
+});
+
+test("documents normalized owners, final-owner cleanup, and same-process reopen", () => {
+  expect(readme).toMatch(/project[^\n]*normalized root[^\n]*final owner/i);
+  expect(readme).toMatch(/global[^\n]*final[^\n]*OpenCode[^\n]*owner/i);
+  expect(readme).toMatch(/stopOnExit: false[^\n]*remain[^\n]*tracked/i);
+  expect(readme).toMatch(/stopOnExit: true[^\n]*final owner[^\n]*stop/i);
+  expect(readme).toMatch(/same-process reopen/i);
+  expect(readme).toMatch(
+    /confirmed successful[^\n]*cleanup[^\n]*releases the identity[^\n]*reopening[^\n]*same OpenCode process[^\n]*starts a new process/i,
+  );
+});
+
+test("documents degraded restart blockers and process visibility", () => {
+  expect(readme).toMatch(/partial[^\n]*restart[^\n]*degraded[^\n]*no replacement/i);
+  expect(readme).toMatch(/survivor[^\n]*orphaned owners[^\n]*oldest survivor/i);
+  expect(readme).toMatch(/tombstones[^\n]*blockers[^\n]*block/i);
   expect(readme).toMatch(/failed[^\n]*(?:not retried|no retry)/i);
-  expect(readme).toMatch(/restart OpenCode/i);
+  expect(readme).toMatch(
+    /launch failures[^\n]*final natural exits[^\n]*unconfirmed stale cleanup[^\n]*same-process retry/i,
+  );
+  expect(readme).toMatch(/plugin[^\n]*launched[^\n]*current OpenCode process/i);
+  expect(readme).toMatch(/does not scan[^\n]*OS[^\n]*(?:discover|adopt)/i);
+  expect(readme).toMatch(/full OpenCode restart[^\n]*cannot rediscover/i);
+  expect(readme).toMatch(/full OpenCode restart[^\n]*updating plugin code/i);
+});
+
+test("documents platform stop escalation, limitations, and sanitized events", () => {
+  expect(readme).toMatch(/POSIX[^\n]*SIGTERM[^\n]*5 seconds[^\n]*SIGKILL/i);
+  expect(readme).toMatch(
+    /Windows[^\n]*direct[^\n]*trusted[^\n]*taskkill\.exe[^\n]*\/T[^\n]*waits? 5 seconds[^\n]*only if the tree still remains[^\n]*taskkill\.exe[^\n]*\/T[^\n]*\/F/i,
+  );
+  expect(readme).toMatch(
+    /best-effort[^\n]*detached[^\n]*escaped descendants[^\n]*forced OpenCode termination[^\n]*OS crash[^\n]*power loss/i,
+  );
+  expect(readme).toMatch(/sanitized[^\n]*requested[^\n]*forced[^\n]*failed stop events/i);
+  expect(readme).toMatch(/stop events[^\n]*commands[^\n]*raw errors/i);
+});
+
+test("documents fail-closed Windows cleanup after the tracked root exits", () => {
+  expect(readme).toMatch(
+    /Windows[^\n]*tracked root exits before cleanup[^\n]*descendants cannot be addressed safely/i,
+  );
+  expect(readme).toMatch(/fails closed[^\n]*may leave descendants running/i);
+  expect(readme).toMatch(/blocks restart[^\n]*identity/i);
+  expect(readme).toMatch(/recovery[^\n]*full OpenCode restart/i);
 });
 
 test("distinguishes the original project cwd from the normalized deduplication key", () => {

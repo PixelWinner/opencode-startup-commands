@@ -7,9 +7,23 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, win32 } from "node:path";
+import type { ProcessTreeFailureReason } from "./process-tree.js";
 
 type LogErrorCode = "EACCES" | "ENOENT" | "EPERM";
 type LogScope = "global" | "project";
+
+export type CommandStopTrigger =
+  | "scope-disposed"
+  | "root-exited"
+  | "restart";
+
+interface CommandStopContext {
+  scope: LogScope;
+  index: number;
+  name: string;
+  pid?: number;
+  trigger: CommandStopTrigger;
+}
 
 export type LogEvent =
   | { type: "plugin.initialized"; commandCount: number }
@@ -67,7 +81,13 @@ export type LogEvent =
       name: string;
       exitCode: number | null;
       signal: NodeJS.Signals | null;
-    };
+    }
+  | ({ type: "command.stop-requested" } & CommandStopContext)
+  | ({ type: "command.stop-forced" } & CommandStopContext)
+  | ({
+      type: "command.stop-failed";
+      reason: ProcessTreeFailureReason;
+    } & CommandStopContext);
 
 export interface Logger {
   write(event: LogEvent): void;
@@ -104,6 +124,12 @@ function formatCode(code: LogErrorCode | undefined): string {
   return code ? ` code=${code}` : "";
 }
 
+function formatStopContext(event: CommandStopContext): string {
+  return `scope=${event.scope} index=${event.index} name=${formatName(event.name)}${
+    event.pid === undefined ? "" : ` pid=${event.pid}`
+  } trigger=${event.trigger}`;
+}
+
 function assertNeverEvent(event: never): never {
   throw new Error("Unhandled log event");
 }
@@ -134,6 +160,12 @@ function formatConsoleEvent(event: LogEvent): string {
       return `exited scope=${event.scope} index=${event.index} name=${formatName(event.name)} exitCode=${
         event.exitCode === null ? "null" : event.exitCode
       } signal=${event.signal ?? "null"}`;
+    case "command.stop-requested":
+      return `stop requested ${formatStopContext(event)}`;
+    case "command.stop-forced":
+      return `stop forced ${formatStopContext(event)}`;
+    case "command.stop-failed":
+      return `stop failed ${formatStopContext(event)} reason=${event.reason}`;
     default:
       return assertNeverEvent(event);
   }
@@ -164,6 +196,11 @@ function formatFileEvent(event: LogEvent): string {
       return `${event.type} scope=${event.scope} index=${event.index} name=${formatName(event.name)} exitCode=${
         event.exitCode === null ? "null" : event.exitCode
       } signal=${event.signal ?? "null"}`;
+    case "command.stop-requested":
+    case "command.stop-forced":
+      return `${event.type} ${formatStopContext(event)}`;
+    case "command.stop-failed":
+      return `${event.type} ${formatStopContext(event)} reason=${event.reason}`;
     default:
       return assertNeverEvent(event);
   }

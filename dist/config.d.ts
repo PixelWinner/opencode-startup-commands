@@ -1,8 +1,11 @@
 export type ConfigScope = "global" | "project";
+export type OnExistingProcessPolicy = "start" | "skip" | "restart";
 interface ConfiguredCommandFields {
     name: string;
     executable: string;
     args: string[];
+    onExistingProcess: OnExistingProcessPolicy;
+    stopOnExit: boolean;
     index: number;
 }
 export type ConfiguredCommand = (ConfiguredCommandFields & {

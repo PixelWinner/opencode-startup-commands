@@ -4,10 +4,14 @@ import { join } from "node:path";
 
 export type ConfigScope = "global" | "project";
 
+export type OnExistingProcessPolicy = "start" | "skip" | "restart";
+
 interface ConfiguredCommandFields {
   name: string;
   executable: string;
   args: string[];
+  onExistingProcess: OnExistingProcessPolicy;
+  stopOnExit: boolean;
   index: number;
 }
 
@@ -160,7 +164,13 @@ export function loadConfigFile(
       typeof value.executable !== "string" ||
       !value.executable.trim() ||
       !Array.isArray(value.args) ||
-      !value.args.every((argument) => typeof argument === "string")
+      !value.args.every((argument) => typeof argument === "string") ||
+      (value.onExistingProcess !== undefined &&
+        value.onExistingProcess !== "start" &&
+        value.onExistingProcess !== "skip" &&
+        value.onExistingProcess !== "restart") ||
+      (value.stopOnExit !== undefined &&
+        typeof value.stopOnExit !== "boolean")
     ) {
       diagnostics.push(invalidCommandDiagnostic(scope, index, value));
       return;
@@ -170,6 +180,10 @@ export function loadConfigFile(
       name: value.name.trim(),
       executable: value.executable,
       args: value.args,
+      onExistingProcess:
+        (value.onExistingProcess as OnExistingProcessPolicy | undefined) ??
+        "skip",
+      stopOnExit: value.stopOnExit ?? true,
       index,
     };
 

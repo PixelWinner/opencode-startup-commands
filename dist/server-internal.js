@@ -32,8 +32,10 @@ export function createStartupCommandsServer(dependencies) {
             ]) {
                 writeConfigDiagnostic(diagnostic, dependencies.logger);
             }
-            runStartupCommands([...globalConfig.commands, ...projectConfig.commands], dependencies);
-            return {};
+            const activation = await runStartupCommands([...globalConfig.commands, ...projectConfig.commands], dependencies);
+            return {
+                dispose: () => activation.dispose(),
+            };
         },
     };
 }

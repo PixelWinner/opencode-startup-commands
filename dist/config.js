@@ -76,7 +76,13 @@ export function loadConfigFile(...args) {
             typeof value.executable !== "string" ||
             !value.executable.trim() ||
             !Array.isArray(value.args) ||
-            !value.args.every((argument) => typeof argument === "string")) {
+            !value.args.every((argument) => typeof argument === "string") ||
+            (value.onExistingProcess !== undefined &&
+                value.onExistingProcess !== "start" &&
+                value.onExistingProcess !== "skip" &&
+                value.onExistingProcess !== "restart") ||
+            (value.stopOnExit !== undefined &&
+                typeof value.stopOnExit !== "boolean")) {
             diagnostics.push(invalidCommandDiagnostic(scope, index, value));
             return;
         }
@@ -84,6 +90,9 @@ export function loadConfigFile(...args) {
             name: value.name.trim(),
             executable: value.executable,
             args: value.args,
+            onExistingProcess: value.onExistingProcess ??
+                "skip",
+            stopOnExit: value.stopOnExit ?? true,
             index,
         };
         if (scope === "project") {

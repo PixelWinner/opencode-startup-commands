@@ -15,6 +15,9 @@ function formatName(name) {
 function formatCode(code) {
     return code ? ` code=${code}` : "";
 }
+function formatStopContext(event) {
+    return `scope=${event.scope} index=${event.index} name=${formatName(event.name)}${event.pid === undefined ? "" : ` pid=${event.pid}`} trigger=${event.trigger}`;
+}
 function assertNeverEvent(event) {
     throw new Error("Unhandled log event");
 }
@@ -38,6 +41,12 @@ function formatConsoleEvent(event) {
             return `child error scope=${event.scope} index=${event.index} name=${formatName(event.name)}${formatCode(event.code)}`;
         case "command.exited":
             return `exited scope=${event.scope} index=${event.index} name=${formatName(event.name)} exitCode=${event.exitCode === null ? "null" : event.exitCode} signal=${event.signal ?? "null"}`;
+        case "command.stop-requested":
+            return `stop requested ${formatStopContext(event)}`;
+        case "command.stop-forced":
+            return `stop forced ${formatStopContext(event)}`;
+        case "command.stop-failed":
+            return `stop failed ${formatStopContext(event)} reason=${event.reason}`;
         default:
             return assertNeverEvent(event);
     }
@@ -61,6 +70,11 @@ function formatFileEvent(event) {
             return `${event.type} scope=${event.scope} index=${event.index} name=${formatName(event.name)}${formatCode(event.code)}`;
         case "command.exited":
             return `${event.type} scope=${event.scope} index=${event.index} name=${formatName(event.name)} exitCode=${event.exitCode === null ? "null" : event.exitCode} signal=${event.signal ?? "null"}`;
+        case "command.stop-requested":
+        case "command.stop-forced":
+            return `${event.type} ${formatStopContext(event)}`;
+        case "command.stop-failed":
+            return `${event.type} ${formatStopContext(event)} reason=${event.reason}`;
         default:
             return assertNeverEvent(event);
     }

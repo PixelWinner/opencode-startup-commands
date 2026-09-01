@@ -2,6 +2,7 @@ import {
   loadConfigFile,
   type ConfigDiagnostic,
   type ConfiguredCommand,
+  type OnExistingProcessPolicy,
 } from "../src/config.js";
 
 loadConfigFile("global", "global.json");
@@ -13,10 +14,23 @@ loadConfigFile("project", "project.json");
 // @ts-expect-error global configuration does not accept a project root
 loadConfigFile("global", "global.json", "project-root");
 
+const onExistingProcessPolicies: OnExistingProcessPolicy[] = [
+  "start",
+  "skip",
+  "restart",
+];
+void onExistingProcessPolicies;
+
+// @ts-expect-error onExistingProcess rejects unsupported policies
+const invalidOnExistingProcessPolicy: OnExistingProcessPolicy = "replace";
+void invalidOnExistingProcessPolicy;
+
 const globalCommand = {
   name: "Global Helper",
   executable: "helper",
   args: [],
+  onExistingProcess: "skip",
+  stopOnExit: true,
   scope: "global",
   index: 0,
 } satisfies ConfiguredCommand;
@@ -26,17 +40,44 @@ const projectCommand = {
   name: "Project Helper",
   executable: "helper",
   args: [],
+  onExistingProcess: "start",
+  stopOnExit: false,
   scope: "project",
   projectRoot: "project-root",
   index: 0,
 } satisfies ConfiguredCommand;
 void projectCommand;
 
+// @ts-expect-error configured commands require onExistingProcess
+const commandWithoutOnExistingProcess: ConfiguredCommand = {
+  name: "Global Helper",
+  executable: "helper",
+  args: [],
+  stopOnExit: true,
+  scope: "global",
+  index: 0,
+};
+void commandWithoutOnExistingProcess;
+
+const commandWithNonBooleanStopOnExit: ConfiguredCommand = {
+  name: "Global Helper",
+  executable: "helper",
+  args: [],
+  onExistingProcess: "skip",
+  // @ts-expect-error configured commands require boolean stopOnExit
+  stopOnExit: "yes",
+  scope: "global",
+  index: 0,
+};
+void commandWithNonBooleanStopOnExit;
+
 // @ts-expect-error configured commands require their source array index
 const globalCommandWithoutIndex: ConfiguredCommand = {
   name: "Global Helper",
   executable: "helper",
   args: [],
+  onExistingProcess: "skip",
+  stopOnExit: true,
   scope: "global",
 };
 void globalCommandWithoutIndex;
@@ -46,6 +87,8 @@ const projectWithoutRoot: ConfiguredCommand = {
   name: "Project Helper",
   executable: "helper",
   args: [],
+  onExistingProcess: "skip",
+  stopOnExit: true,
   scope: "project",
   index: 0,
 };
@@ -56,6 +99,8 @@ const globalWithRoot: ConfiguredCommand = {
   name: "Global Helper",
   executable: "helper",
   args: [],
+  onExistingProcess: "skip",
+  stopOnExit: true,
   scope: "global",
   projectRoot: "project-root",
   index: 0,

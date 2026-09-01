@@ -1,5 +1,14 @@
+import type { ProcessTreeFailureReason } from "./process-tree.js";
 type LogErrorCode = "EACCES" | "ENOENT" | "EPERM";
 type LogScope = "global" | "project";
+export type CommandStopTrigger = "scope-disposed" | "root-exited" | "restart";
+interface CommandStopContext {
+    scope: LogScope;
+    index: number;
+    name: string;
+    pid?: number;
+    trigger: CommandStopTrigger;
+}
 export type LogEvent = {
     type: "plugin.initialized";
     commandCount: number;
@@ -46,7 +55,14 @@ export type LogEvent = {
     name: string;
     exitCode: number | null;
     signal: NodeJS.Signals | null;
-};
+} | ({
+    type: "command.stop-requested";
+} & CommandStopContext) | ({
+    type: "command.stop-forced";
+} & CommandStopContext) | ({
+    type: "command.stop-failed";
+    reason: ProcessTreeFailureReason;
+} & CommandStopContext);
 export interface Logger {
     write(event: LogEvent): void;
 }
