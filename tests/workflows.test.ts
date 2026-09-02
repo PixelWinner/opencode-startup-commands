@@ -217,7 +217,7 @@ describe("release workflow modes and permissions", () => {
     expect(tagPackage).toContain("process.env.RELEASE_TAG");
     expect(tagPackage).toContain("process.env.GITHUB_OUTPUT");
     expect(tagPackage).toContain("tarball_name=");
-    expect(tagPackage).not.toContain("opencode-startup-commands-1.0.0.tgz");
+    expect(tagPackage).not.toContain("opencode-startup-commands-1.1.0.tgz");
     expect(tagPackage).not.toContain("contents: write");
   });
 

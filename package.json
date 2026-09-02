@@ -1,6 +1,6 @@
 {
   "name": "opencode-startup-commands",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Launch trusted background commands when OpenCode initializes a project or directory.",
   "license": "MIT",
   "author": {

@@ -7,18 +7,15 @@ import type {
 } from "./config.js";
 import {
   runStartupCommands,
-  type SpawnFunction,
-  type StartupState,
+  type StartupDependencies,
 } from "./core.js";
 import type { Logger } from "./logger.js";
 
-export interface StartupCommandsServerDependencies {
+export interface StartupCommandsServerDependencies
+  extends StartupDependencies {
   loadConfigFile: typeof loadConfigFile;
   resolveGlobalConfigPath: typeof resolveGlobalConfigPath;
   resolveProjectConfigPath: typeof resolveProjectConfigPath;
-  spawn: SpawnFunction;
-  state: StartupState;
-  logger: Logger;
 }
 
 function writeConfigDiagnostic(
@@ -69,12 +66,14 @@ export function createStartupCommandsServer(
         writeConfigDiagnostic(diagnostic, dependencies.logger);
       }
 
-      runStartupCommands(
+      const activation = await runStartupCommands(
         [...globalConfig.commands, ...projectConfig.commands],
         dependencies,
       );
 
-      return {};
+      return {
+        dispose: () => activation.dispose(),
+      };
     },
   };
 }

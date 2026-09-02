@@ -211,21 +211,21 @@ describe("release environment validation", () => {
     const candidate = await makeCandidate();
     const environment = {
       ...validEnvironment(candidate.directory),
-      RELEASE_TAG: "v1.0.1",
+      RELEASE_TAG: "v1.1.0",
     };
 
     expect(validateReleaseEnvironment(environment)).toEqual({
       repository,
-      tag: "v1.0.1",
+      tag: "v1.1.0",
       commitSha,
       candidateDirectory: candidate.directory,
-      tarballName: "opencode-startup-commands-1.0.1.tgz",
+      tarballName: "opencode-startup-commands-1.1.0.tgz",
       tarballPath: join(
         candidate.directory,
-        "opencode-startup-commands-1.0.1.tgz",
+        "opencode-startup-commands-1.1.0.tgz",
       ),
       checksumPath: join(candidate.directory, checksumName),
-      title: "v1.0.1",
+      title: "v1.1.0",
     });
   });
 });
