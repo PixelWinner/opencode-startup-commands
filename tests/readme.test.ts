@@ -4,10 +4,10 @@ import { join } from "node:path";
 
 const readme = readFileSync(join(import.meta.dir, "..", "README.md"), "utf8");
 const packageName = "opencode-startup-commands";
-const npmRegistration = `${packageName}@1.0.0`;
+const npmRegistration = `${packageName}@1.1.0`;
 const gitRegistration =
   `${packageName}@git+https://github.com/PixelWinner/` +
-  `${packageName}.git#v1.0.0`;
+  `${packageName}.git#v1.1.0`;
 
 function pluginRegistrations(markdown: string): string[] {
   const registrations: string[] = [];

@@ -50,7 +50,7 @@ const allowedPaths = [
 
 const releaseManifest = {
   name: "opencode-startup-commands",
-  version: "1.0.0",
+  version: "1.1.0",
   main: "./dist/server.js",
   types: "./dist/server.d.ts",
   exports: {
@@ -76,10 +76,10 @@ const releaseManifest = {
 };
 
 const packResult = {
-  id: "opencode-startup-commands@1.0.0",
+  id: "opencode-startup-commands@1.1.0",
   name: "opencode-startup-commands",
-  version: "1.0.0",
-  filename: "opencode-startup-commands-1.0.0.tgz",
+  version: "1.1.0",
+  filename: "opencode-startup-commands-1.1.0.tgz",
   size: 1024,
   unpackedSize: 4096,
   shasum: "0123456789abcdef0123456789abcdef01234567",
@@ -189,8 +189,8 @@ describe("package limits and identity", () => {
   test("requires the exact package identity and tarball filename", () => {
     expect(validatePackageIdentity(packResult)).toEqual({
       name: "opencode-startup-commands",
-      version: "1.0.0",
-      filename: "opencode-startup-commands-1.0.0.tgz",
+      version: "1.1.0",
+      filename: "opencode-startup-commands-1.1.0.tgz",
     });
 
     for (const changed of [
@@ -653,10 +653,10 @@ test("formats a deterministic SHA-256 checksum line", () => {
   expect(
     formatChecksumLine(
       digest,
-      "opencode-startup-commands-1.0.0.tgz",
+      "opencode-startup-commands-1.1.0.tgz",
     ),
   ).toBe(
-    `${digest}  opencode-startup-commands-1.0.0.tgz\n`,
+    `${digest}  opencode-startup-commands-1.1.0.tgz\n`,
   );
 });
 

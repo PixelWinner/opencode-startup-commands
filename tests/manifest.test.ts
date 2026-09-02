@@ -5,7 +5,7 @@ const manifest: Record<string, unknown> = packageManifest;
 
 test("manifest exposes the exact public release metadata", () => {
   expect(manifest.name).toBe("opencode-startup-commands");
-  expect(manifest.version).toBe("1.0.0");
+  expect(manifest.version).toBe("1.1.0");
   expect(manifest).not.toHaveProperty("private");
   expect(manifest.description).toBe(
     "Launch trusted background commands when OpenCode initializes a project or directory.",

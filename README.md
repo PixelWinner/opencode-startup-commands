@@ -24,7 +24,7 @@ Register the exact npm release in `opencode.json` or `opencode.jsonc`:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-startup-commands@1.0.0"]
+  "plugin": ["opencode-startup-commands@1.1.0"]
 }
 ```
 
@@ -33,7 +33,7 @@ Alternatively, register the immutable Git tag:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-startup-commands@git+https://github.com/PixelWinner/opencode-startup-commands.git#v1.0.0"]
+  "plugin": ["opencode-startup-commands@git+https://github.com/PixelWinner/opencode-startup-commands.git#v1.1.0"]
 }
 ```
 
