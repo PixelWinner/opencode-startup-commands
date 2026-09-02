@@ -18,7 +18,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { runChecked } from "./process.mjs";
 
 const PACKAGE_NAME = "opencode-startup-commands";
-const PACKAGE_VERSION = "1.1.0";
+const PACKAGE_VERSION = "1.2.0";
 const PACKAGE_FILENAME = `${PACKAGE_NAME}-${PACKAGE_VERSION}.tgz`;
 const MAX_COMPRESSED_SIZE = 2 * 1024 * 1024;
 const MAX_UNPACKED_SIZE = 5 * 1024 * 1024;
@@ -29,8 +29,16 @@ const REQUIRED_PACKAGE_PATHS = [
   "dist/config.d.ts",
   "dist/core.js",
   "dist/core.d.ts",
+  "dist/durable-lock.js",
+  "dist/durable-lock.d.ts",
+  "dist/durable-registry.js",
+  "dist/durable-registry.d.ts",
+  "dist/error-code.js",
+  "dist/error-code.d.ts",
   "dist/logger.js",
   "dist/logger.d.ts",
+  "dist/process-identity.js",
+  "dist/process-identity.d.ts",
   "dist/process-tree.d.ts",
   "dist/process-tree.js",
   "dist/server.js",

@@ -17,6 +17,14 @@ export type CommandStopTrigger =
   | "root-exited"
   | "restart";
 
+export type DurableUnavailableCause =
+  | "registry-unreadable"
+  | "registry-malformed"
+  | "registry-unsupported-schema"
+  | "lock-unavailable"
+  | "identity-unavailable"
+  | "registry-unwritable";
+
 interface CommandStopContext {
   scope: LogScope;
   index: number;
@@ -51,7 +59,7 @@ export type LogEvent =
       scope: LogScope;
       index: number;
       name: string;
-      reason: "duplicate" | "already-started";
+      reason: "duplicate" | "already-started" | "durable-unavailable";
     }
   | {
       type: "command.spawned";
@@ -87,7 +95,35 @@ export type LogEvent =
   | ({
       type: "command.stop-failed";
       reason: ProcessTreeFailureReason;
-    } & CommandStopContext);
+    } & CommandStopContext)
+  | {
+      type: "durable.record-adopted";
+      scope: LogScope;
+      index: number;
+      name: string;
+      pid: number;
+    }
+  | {
+      type: "durable.record-dropped";
+      scope: LogScope;
+      index?: number;
+      name?: string;
+      pid: number;
+    }
+  | {
+      type: "durable.record-unverifiable";
+      scope: LogScope;
+      index?: number;
+      name?: string;
+      pid?: number;
+    }
+  | {
+      type: "durable.reconciled";
+      scope: LogScope;
+      stoppedCount: number;
+    }
+  | { type: "durable.registry-quarantined" }
+  | { type: "durable.unavailable"; cause: DurableUnavailableCause };
 
 export interface Logger {
   write(event: LogEvent): void;
@@ -166,6 +202,26 @@ function formatConsoleEvent(event: LogEvent): string {
       return `stop forced ${formatStopContext(event)}`;
     case "command.stop-failed":
       return `stop failed ${formatStopContext(event)} reason=${event.reason}`;
+    case "durable.record-adopted":
+      return `record adopted scope=${event.scope} index=${event.index} name=${formatName(event.name)} pid=${event.pid}`;
+    case "durable.record-dropped":
+      return `record dropped scope=${event.scope}${
+        event.index === undefined ? "" : ` index=${event.index}`
+      }${
+        event.name === undefined ? "" : ` name=${formatName(event.name)}`
+      } pid=${event.pid}`;
+    case "durable.record-unverifiable":
+      return `record unverifiable scope=${event.scope}${
+        event.index === undefined ? "" : ` index=${event.index}`
+      }${event.name === undefined ? "" : ` name=${formatName(event.name)}`}${
+        event.pid === undefined ? "" : ` pid=${event.pid}`
+      }`;
+    case "durable.reconciled":
+      return `reconciled scope=${event.scope} stoppedCount=${event.stoppedCount}`;
+    case "durable.registry-quarantined":
+      return "registry quarantined";
+    case "durable.unavailable":
+      return `durable unavailable cause=${event.cause}`;
     default:
       return assertNeverEvent(event);
   }
@@ -201,6 +257,26 @@ function formatFileEvent(event: LogEvent): string {
       return `${event.type} ${formatStopContext(event)}`;
     case "command.stop-failed":
       return `${event.type} ${formatStopContext(event)} reason=${event.reason}`;
+    case "durable.record-adopted":
+      return `${event.type} scope=${event.scope} index=${event.index} name=${formatName(event.name)} pid=${event.pid}`;
+    case "durable.record-dropped":
+      return `${event.type} scope=${event.scope}${
+        event.index === undefined ? "" : ` index=${event.index}`
+      }${
+        event.name === undefined ? "" : ` name=${formatName(event.name)}`
+      } pid=${event.pid}`;
+    case "durable.record-unverifiable":
+      return `${event.type} scope=${event.scope}${
+        event.index === undefined ? "" : ` index=${event.index}`
+      }${event.name === undefined ? "" : ` name=${formatName(event.name)}`}${
+        event.pid === undefined ? "" : ` pid=${event.pid}`
+      }`;
+    case "durable.reconciled":
+      return `${event.type} scope=${event.scope} stoppedCount=${event.stoppedCount}`;
+    case "durable.registry-quarantined":
+      return event.type;
+    case "durable.unavailable":
+      return `${event.type} cause=${event.cause}`;
     default:
       return assertNeverEvent(event);
   }

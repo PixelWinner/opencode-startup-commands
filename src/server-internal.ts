@@ -6,16 +6,58 @@ import type {
   resolveProjectConfigPath,
 } from "./config.js";
 import {
+  normalizeProjectRoot,
   runStartupCommands,
   type StartupDependencies,
+  type StartupRunOptions,
 } from "./core.js";
 import type { Logger } from "./logger.js";
+
+export interface StartupOwnerIdentity {
+  readonly pid: number;
+  readonly startToken: string;
+}
 
 export interface StartupCommandsServerDependencies
   extends StartupDependencies {
   loadConfigFile: typeof loadConfigFile;
   resolveGlobalConfigPath: typeof resolveGlobalConfigPath;
   resolveProjectConfigPath: typeof resolveProjectConfigPath;
+  resolveOwnerIdentity?(): Promise<StartupOwnerIdentity | undefined>;
+}
+
+async function resolveOwner(
+  dependencies: StartupCommandsServerDependencies,
+): Promise<StartupOwnerIdentity | undefined> {
+  if (!dependencies.resolveOwnerIdentity) {
+    return undefined;
+  }
+  try {
+    return await dependencies.resolveOwnerIdentity();
+  } catch {
+    return undefined;
+  }
+}
+
+function buildRunOptions(
+  dependencies: StartupCommandsServerDependencies,
+  worktree: string,
+  authoritative: boolean,
+): StartupRunOptions | undefined {
+  const { registry, identity } = dependencies;
+  if (!registry || !identity) {
+    return undefined;
+  }
+
+  const projectRootHash = registry.hashProjectRoot(
+    normalizeProjectRoot(worktree),
+  );
+
+  return {
+    authoritative,
+    projectRootHash,
+    resolveOwner: () => resolveOwner(dependencies),
+  };
 }
 
 function writeConfigDiagnostic(
@@ -39,7 +81,6 @@ function writeConfigDiagnostic(
       reason: diagnostic.reason,
     });
   } catch {
-    // Logging must not prevent valid commands from reaching core execution.
   }
 }
 
@@ -66,9 +107,17 @@ export function createStartupCommandsServer(
         writeConfigDiagnostic(diagnostic, dependencies.logger);
       }
 
+      const runOptions = buildRunOptions(
+        dependencies,
+        input.worktree,
+        globalConfig.diagnostics.length === 0 &&
+          projectConfig.diagnostics.length === 0,
+      );
+
       const activation = await runStartupCommands(
         [...globalConfig.commands, ...projectConfig.commands],
         dependencies,
+        runOptions,
       );
 
       return {

@@ -2,6 +2,7 @@ import type { ProcessTreeFailureReason } from "./process-tree.js";
 type LogErrorCode = "EACCES" | "ENOENT" | "EPERM";
 type LogScope = "global" | "project";
 export type CommandStopTrigger = "scope-disposed" | "root-exited" | "restart";
+export type DurableUnavailableCause = "registry-unreadable" | "registry-malformed" | "registry-unsupported-schema" | "lock-unavailable" | "identity-unavailable" | "registry-unwritable";
 interface CommandStopContext {
     scope: LogScope;
     index: number;
@@ -29,7 +30,7 @@ export type LogEvent = {
     scope: LogScope;
     index: number;
     name: string;
-    reason: "duplicate" | "already-started";
+    reason: "duplicate" | "already-started" | "durable-unavailable";
 } | {
     type: "command.spawned";
     scope: LogScope;
@@ -62,7 +63,34 @@ export type LogEvent = {
 } & CommandStopContext) | ({
     type: "command.stop-failed";
     reason: ProcessTreeFailureReason;
-} & CommandStopContext);
+} & CommandStopContext) | {
+    type: "durable.record-adopted";
+    scope: LogScope;
+    index: number;
+    name: string;
+    pid: number;
+} | {
+    type: "durable.record-dropped";
+    scope: LogScope;
+    index?: number;
+    name?: string;
+    pid: number;
+} | {
+    type: "durable.record-unverifiable";
+    scope: LogScope;
+    index?: number;
+    name?: string;
+    pid?: number;
+} | {
+    type: "durable.reconciled";
+    scope: LogScope;
+    stoppedCount: number;
+} | {
+    type: "durable.registry-quarantined";
+} | {
+    type: "durable.unavailable";
+    cause: DurableUnavailableCause;
+};
 export interface Logger {
     write(event: LogEvent): void;
 }

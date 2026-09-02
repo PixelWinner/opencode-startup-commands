@@ -1,15 +1,9 @@
 import { spawn as spawnProcess } from "node:child_process";
 import { win32 } from "node:path";
+import { getErrorCode } from "./error-code.js";
 const DEFAULT_GRACE_PERIOD_MS = 5_000;
 const DEFAULT_POLL_INTERVAL_MS = 50;
 const DEFAULT_UTILITY_TIMEOUT_MS = 5_000;
-function getErrorCode(error) {
-    if (typeof error !== "object" || error === null || !("code" in error)) {
-        return undefined;
-    }
-    const code = error.code;
-    return typeof code === "string" ? code : undefined;
-}
 function signalProcess(kill, pid, signal) {
     try {
         return kill(pid, signal)

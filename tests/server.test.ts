@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test";
+import { createHash } from "node:crypto";
+import { normalize, resolve } from "node:path";
 import type { PluginInput } from "@opencode-ai/plugin";
 import type {
   ConfigLoadResult,
@@ -9,7 +11,9 @@ import {
   type SpawnedChild,
   type StartupSpawnOptions,
 } from "../src/core.js";
+import type { DurableRecord, DurableRegistry } from "../src/durable-registry.js";
 import type { LogEvent, Logger } from "../src/logger.js";
+import type { ProcessIdentityController } from "../src/process-identity.js";
 import type {
   ProcessTreeController,
   ProcessTreeStopResult,
@@ -28,6 +32,9 @@ interface FixtureOptions {
   logger?: Logger;
   pids?: readonly number[];
   stop?: ProcessTreeController["stop"];
+  registry?: DurableRegistry;
+  identity?: ProcessIdentityController;
+  resolveOwnerIdentity?: StartupCommandsServerDependencies["resolveOwnerIdentity"];
 }
 
 function createFixture(options?: FixtureOptions) {
@@ -107,6 +114,9 @@ function createFixture(options?: FixtureOptions) {
           events.push(event);
         },
       },
+    registry: options?.registry,
+    identity: options?.identity,
+    resolveOwnerIdentity: options?.resolveOwnerIdentity,
   };
 
   return {
@@ -547,4 +557,294 @@ test("ignores legacy tuple options", async () => {
     { type: "plugin.initialized", commandCount: 0 },
     { type: "batch.skipped", reason: "no-valid-commands" },
   ]);
+});
+
+test("computes projectRootHash as a real 64-character lowercase hex digest", async () => {
+  const hashProjectRootCalls: string[] = [];
+  const writes: DurableRecord[][] = [];
+  const expectedNormalizedRoot =
+    process.platform === "win32"
+      ? normalize(resolve(input.worktree)).toLowerCase()
+      : normalize(resolve(input.worktree));
+  const expectedProjectRootHash = createHash("sha256")
+    .update(expectedNormalizedRoot)
+    .digest("hex");
+  const command: ConfiguredCommand = {
+    ...projectCommand(input.worktree),
+    stopOnExit: false,
+  };
+  const expectedIdentityHash = createHash("sha256")
+    .update(JSON.stringify([command.executable, command.args]))
+    .digest("hex");
+  const persisted: DurableRecord = {
+    scope: "project",
+    identityHash: expectedIdentityHash,
+    projectRootHash: expectedProjectRootHash,
+    pid: 4321,
+    startToken: "linux1:boot-a:1",
+    stopOnExit: false,
+    creationOrder: 0,
+    recordedAt: "2026-09-03T00:00:00.000Z",
+  };
+
+  const registry: DurableRegistry = {
+    hashIdentity(signature: string): string {
+      return createHash("sha256").update(signature).digest("hex");
+    },
+    hashProjectRoot(normalizedRoot: string): string {
+      hashProjectRootCalls.push(normalizedRoot);
+      return createHash("sha256").update(normalizedRoot).digest("hex");
+    },
+    exists: () => true,
+    read() {
+      return { status: "loaded", records: [persisted] };
+    },
+    write(records) {
+      writes.push([...records]);
+      return true;
+    },
+    async acquireLock() {
+      return { status: "acquired", handle: { release: () => {} } };
+    },
+  };
+  const identity: ProcessIdentityController = {
+    describe() {
+      throw new Error(
+        "describe should not run: the owner thunk resolves an identity, " +
+          "and the only persisted record is adopted, not spawned",
+      );
+    },
+    async probe() {
+      return { status: "alive" };
+    },
+  };
+  const fixture = createFixture({
+    registry,
+    identity,
+    resolveOwnerIdentity: async () => ({
+      pid: 4242,
+      startToken: "owner-token-abc",
+    }),
+  });
+  fixture.setProjectConfig({
+    commands: [command],
+    diagnostics: [],
+  });
+
+  await fixture.server.server(input);
+
+  expect(hashProjectRootCalls).toEqual([expectedNormalizedRoot]);
+  expect(fixture.spawnCalls).toEqual([]);
+  expect(
+    fixture.events.some((event) => event.type === "durable.record-adopted"),
+  ).toBe(true);
+  const written = writes.at(-1) ?? [];
+  expect(written).toHaveLength(1);
+  expect(written[0]?.scope).toBe("project");
+  expect(written[0]?.identityHash).toBe(expectedIdentityHash);
+  expect(written[0]?.projectRootHash).toBe(expectedProjectRootHash);
+  expect(written[0]?.pid).toBe(4321);
+});
+
+test("never calls the durable registry when the identity dependency is absent", async () => {
+  const fixture = createFixture({
+    registry: {
+      hashIdentity(): string {
+        throw new Error("registry must not be used without identity");
+      },
+      hashProjectRoot(): string {
+        throw new Error("registry must not be used without identity");
+      },
+      exists(): boolean {
+        throw new Error("registry must not be used without identity");
+      },
+      read() {
+        throw new Error("registry must not be used without identity");
+      },
+      write() {
+        throw new Error("registry must not be used without identity");
+      },
+      acquireLock() {
+        throw new Error("registry must not be used without identity");
+      },
+    },
+  });
+  fixture.setGlobalConfig({ commands: [globalCommand()], diagnostics: [] });
+
+  const hooks = await fixture.server.server(input);
+
+  expect(fixture.spawnCalls).toHaveLength(1);
+  expect(typeof hooks.dispose).toBe("function");
+});
+
+test("never calls the durable registry when the registry dependency is absent", async () => {
+  const identity: ProcessIdentityController = {
+    describe() {
+      throw new Error("identity must not be used without a registry");
+    },
+    probe() {
+      throw new Error("identity must not be used without a registry");
+    },
+  };
+  const fixture = createFixture({ identity });
+  fixture.setGlobalConfig({ commands: [globalCommand()], diagnostics: [] });
+
+  const hooks = await fixture.server.server(input);
+
+  expect(fixture.spawnCalls).toHaveLength(1);
+  expect(typeof hooks.dispose).toBe("function");
+});
+
+test("passes a resolved owner identity through to the durable lock holder", async () => {
+  const acquireLockCalls: Array<{ pid: number; startToken: string }> = [];
+  const registry: DurableRegistry = {
+    hashIdentity(signature: string): string {
+      return createHash("sha256").update(signature).digest("hex");
+    },
+    hashProjectRoot(normalizedRoot: string): string {
+      return createHash("sha256").update(normalizedRoot).digest("hex");
+    },
+    exists: () => true,
+    read() {
+      throw new Error("not exercised by this test");
+    },
+    write() {
+      throw new Error("not exercised by this test");
+    },
+    async acquireLock(holder) {
+      acquireLockCalls.push(holder);
+      return { status: "unavailable" };
+    },
+  };
+  const identity: ProcessIdentityController = {
+    describe() {
+      throw new Error(
+        "describe should not run when the owner thunk resolves an identity",
+      );
+    },
+    probe() {
+      throw new Error("probe is not exercised by this test");
+    },
+  };
+  const fixture = createFixture({
+    registry,
+    identity,
+    resolveOwnerIdentity: async () => ({
+      pid: 4242,
+      startToken: "owner-token-abc",
+    }),
+  });
+  fixture.setProjectConfig({
+    commands: [projectCommand(input.worktree)],
+    diagnostics: [],
+  });
+
+  await fixture.server.server(input);
+
+  expect(acquireLockCalls).toEqual([{ pid: 4242, startToken: "owner-token-abc" }]);
+});
+
+test("falls back to core's identity resolution instead of fabricating a token", async () => {
+  const acquireLockCalls: Array<{ pid: number; startToken: string }> = [];
+  const describeCalls: Array<number | undefined> = [];
+  const registry: DurableRegistry = {
+    hashIdentity(signature: string): string {
+      return createHash("sha256").update(signature).digest("hex");
+    },
+    hashProjectRoot(normalizedRoot: string): string {
+      return createHash("sha256").update(normalizedRoot).digest("hex");
+    },
+    exists: () => true,
+    read() {
+      throw new Error("not exercised by this test");
+    },
+    write() {
+      throw new Error("not exercised by this test");
+    },
+    async acquireLock(holder) {
+      acquireLockCalls.push(holder);
+      return { status: "unavailable" };
+    },
+  };
+  const identity: ProcessIdentityController = {
+    async describe(pid) {
+      describeCalls.push(pid);
+      return { status: "described", token: "fallback-token" };
+    },
+    probe() {
+      throw new Error("probe is not exercised by this test");
+    },
+  };
+  const fixture = createFixture({
+    registry,
+    identity,
+    resolveOwnerIdentity: async () => {
+      throw new Error("identity source unavailable");
+    },
+  });
+  fixture.setProjectConfig({
+    commands: [projectCommand(input.worktree)],
+    diagnostics: [],
+  });
+
+  const hooks = await fixture.server.server(input);
+
+  expect(describeCalls).toEqual([process.pid]);
+  expect(acquireLockCalls).toEqual([
+    { pid: process.pid, startToken: "fallback-token" },
+  ]);
+  expect(typeof hooks.dispose).toBe("function");
+});
+
+test("resolves authoritative to false when either config scope has diagnostics", async () => {
+  const acquireLockCalls: Array<{ pid: number; startToken: string }> = [];
+  const registry: DurableRegistry = {
+    hashIdentity(signature: string): string {
+      return createHash("sha256").update(signature).digest("hex");
+    },
+    hashProjectRoot(normalizedRoot: string): string {
+      return createHash("sha256").update(normalizedRoot).digest("hex");
+    },
+    exists: () => true,
+    read() {
+      throw new Error("not exercised by this test");
+    },
+    write() {
+      throw new Error("not exercised by this test");
+    },
+    async acquireLock(holder) {
+      acquireLockCalls.push(holder);
+      return { status: "unavailable" };
+    },
+  };
+  const identity: ProcessIdentityController = {
+    describe() {
+      throw new Error(
+        "describe should not run when the owner thunk resolves an identity",
+      );
+    },
+    probe() {
+      throw new Error("probe is not exercised by this test");
+    },
+  };
+  const fixture = createFixture({
+    registry,
+    identity,
+    resolveOwnerIdentity: async () => ({
+      pid: 4242,
+      startToken: "owner-token-abc",
+    }),
+  });
+  fixture.setGlobalConfig({
+    commands: [],
+    diagnostics: [{ scope: "global", reason: "invalid-document" }],
+  });
+  fixture.setProjectConfig({
+    commands: [projectCommand(input.worktree)],
+    diagnostics: [],
+  });
+
+  await fixture.server.server(input);
+
+  expect(acquireLockCalls).toEqual([{ pid: 4242, startToken: "owner-token-abc" }]);
 });

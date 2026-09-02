@@ -45,7 +45,7 @@ const expectedBugIssueForm: Record<string, unknown> = {
       id: "plugin-version",
       attributes: {
         label: "Plugin version",
-        placeholder: "1.1.0",
+        placeholder: "1.2.0",
       },
       validations: { required: true },
     },

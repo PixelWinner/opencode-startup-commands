@@ -148,6 +148,18 @@ const FILE_EVENT_CASES = [
       'command.skipped scope=global index=6 name="Global helper" reason=duplicate',
   },
   {
+    label: "global command blocked by an unavailable durable subsystem",
+    event: {
+      type: "command.skipped",
+      scope: "global",
+      index: 7,
+      name: "Global helper",
+      reason: "durable-unavailable",
+    },
+    expected:
+      'command.skipped scope=global index=7 name="Global helper" reason=durable-unavailable',
+  },
+  {
     label: "project stop requested",
     event: {
       type: "command.stop-requested",
@@ -302,10 +314,18 @@ describe("Logger console output", () => {
       name: "Started helper",
       reason: "already-started",
     });
+    logger.write({
+      type: "command.skipped",
+      scope: "global",
+      index: 4,
+      name: "Blocked helper",
+      reason: "durable-unavailable",
+    });
 
     expect(output.lines).toEqual([
       'startup-commands: command skipped scope=global index=2 name="Repeated helper" reason=duplicate',
       'startup-commands: command skipped scope=project index=3 name="Started helper" reason=already-started',
+      'startup-commands: command skipped scope=global index=4 name="Blocked helper" reason=durable-unavailable',
     ]);
   });
 
@@ -498,5 +518,55 @@ describe("Logger file output", () => {
     logger.write({ type: "plugin.initialized", commandCount: 1 });
 
     expect(existsSync(expectedPath)).toBe(true);
+  });
+});
+
+describe("durable log events", () => {
+  test("formats every durable event without leaking a start token", () => {
+    const output = createConsole();
+    const directory = createTempDirectory();
+    const logger = createLogger({
+      console: output,
+      filePath: join(directory, "durable.log"),
+      now: () => new Date("2026-09-03T01:46:57.997Z"),
+    });
+
+    logger.write({
+      type: "durable.record-adopted",
+      scope: "global",
+      index: 0,
+      name: "Helper",
+      pid: 4242,
+    });
+    logger.write({
+      type: "durable.record-dropped",
+      scope: "project",
+      pid: 5555,
+    });
+    logger.write({
+      type: "durable.record-unverifiable",
+      scope: "global",
+      index: 1,
+      name: "Helper",
+      pid: 6666,
+    });
+    logger.write({
+      type: "durable.reconciled",
+      scope: "global",
+      stoppedCount: 2,
+    });
+    logger.write({ type: "durable.registry-quarantined" });
+    logger.write({ type: "durable.unavailable", cause: "lock-unavailable" });
+
+    expect(output.lines).toHaveLength(6);
+    expect(output.lines[0]).toContain("record adopted");
+    expect(output.lines[0]).toContain("pid=4242");
+    expect(output.lines[3]).toContain("stoppedCount=2");
+    expect(output.lines[4]).toContain("registry quarantined");
+    expect(output.lines[5]).toContain("cause=lock-unavailable");
+    for (const line of output.lines) {
+      expect(line).not.toContain("linux1:");
+      expect(line).not.toContain("registry.json");
+    }
   });
 });

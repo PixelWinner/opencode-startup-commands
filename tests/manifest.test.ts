@@ -5,7 +5,7 @@ const manifest: Record<string, unknown> = packageManifest;
 
 test("manifest exposes the exact public release metadata", () => {
   expect(manifest.name).toBe("opencode-startup-commands");
-  expect(manifest.version).toBe("1.1.0");
+  expect(manifest.version).toBe("1.2.0");
   expect(manifest).not.toHaveProperty("private");
   expect(manifest.description).toBe(
     "Launch trusted background commands when OpenCode initializes a project or directory.",
@@ -19,7 +19,7 @@ test("manifest exposes the exact public release metadata", () => {
     "git+https://github.com/PixelWinner/opencode-startup-commands.git",
   );
   expect(manifest.homepage).toBe(
-    "https://github.com/PixelWinner/opencode-startup-commands#readme",
+    "https://github.com/PixelWinner/opencode-startup-commands",
   );
   expect(manifest.bugs).toEqual({
     url: "https://github.com/PixelWinner/opencode-startup-commands/issues",

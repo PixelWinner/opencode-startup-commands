@@ -4,10 +4,10 @@ import { join } from "node:path";
 
 const readme = readFileSync(join(import.meta.dir, "..", "README.md"), "utf8");
 const packageName = "opencode-startup-commands";
-const npmRegistration = `${packageName}@1.1.0`;
+const npmRegistration = `${packageName}@1.2.0`;
 const gitRegistration =
   `${packageName}@git+https://github.com/PixelWinner/` +
-  `${packageName}.git#v1.1.0`;
+  `${packageName}.git#v1.2.0`;
 
 function pluginRegistrations(markdown: string): string[] {
   const registrations: string[] = [];
@@ -81,6 +81,7 @@ test("keeps the concise approved public structure", () => {
     "Compatibility",
     "Configuration",
     "Lifecycle and deduplication",
+    "Process lifetime across OpenCode restarts",
     "Security",
     "Logging",
     "Development",
@@ -165,6 +166,137 @@ test("documents degraded restart blockers and process visibility", () => {
   expect(readme).toMatch(/does not scan[^\n]*OS[^\n]*(?:discover|adopt)/i);
   expect(readme).toMatch(/full OpenCode restart[^\n]*cannot rediscover/i);
   expect(readme).toMatch(/full OpenCode restart[^\n]*updating plugin code/i);
+});
+
+test("scopes rediscovery to recorded processes with a matching identity", () => {
+  expect(readme).toMatch(
+    /re-adopts only[^\n]*`stopOnExit: false`[^\n]*recorded in its (?:own )?registry/i,
+  );
+  expect(readme).toMatch(/whose `\(pid, startToken\)` pair still matches/i);
+  expect(readme).toMatch(
+    /cannot rediscover[^\n]*`stopOnExit: true`[^\n]*tracked only in memory/i,
+  );
+  expect(readme).toMatch(
+    /processes it recorded[^\n]*registry[^\n]*did not launch/i,
+  );
+});
+
+test("documents durable survival and re-adoption after a full OpenCode exit", () => {
+  expect(readme).toMatch(
+    /`stopOnExit: false`[^\n]*survives an OpenCode exit[^\n]*next OpenCode process re-adopts it/i,
+  );
+  expect(readme).toMatch(/instead of starting a second copy/i);
+  expect(readme).toMatch(
+    /`stopOnExit: true`[^\n]*never recorded[^\n]*never re-adopted/i,
+  );
+});
+
+test("tabulates all six onExistingProcess and stopOnExit combinations", () => {
+  for (const policy of ["start", "skip", "restart"]) {
+    for (const stopOnExit of ["true", "false"]) {
+      expect(readme).toMatch(
+        new RegExp(`^\\| \`${policy}\` \\| \`${stopOnExit}\` \\| \\S`, "m"),
+      );
+    }
+  }
+  expect(readme).toMatch(/`skip` \| `false` \|[^\n]*Reuses the surviving process/i);
+  expect(readme).toMatch(
+    /`start` \| `false` \|[^\n]*starts one more[^\n]*both are remembered/i,
+  );
+  expect(readme).toMatch(
+    /`restart` \| `false` \|[^\n]*Stops the surviving process[^\n]*exactly one replacement/i,
+  );
+  expect(readme).toMatch(/`skip` \| `true` \|[^\n]*Nothing survived/i);
+  expect(readme).toMatch(/`start` \| `true` \|[^\n]*Nothing survived/i);
+  expect(readme).toMatch(/`restart` \| `true` \|[^\n]*Nothing survived/i);
+});
+
+test("documents the deferred stopOnExit transition and configuration reconciliation", () => {
+  expect(readme).toMatch(
+    /Changing `stopOnExit` from `false` to `true`[^\n]*next activation[^\n]*not the running one/i,
+  );
+  expect(readme).toMatch(
+    /surviving process is stopped[^\n]*replacement[^\n]*stopped when its session closes/i,
+  );
+  expect(readme).toMatch(
+    /Removing a command from a cleanly loaded configuration stops its durable process/i,
+  );
+  expect(readme).toMatch(
+    /kept unless that stop is confirmed[^\n]*retried on every later cleanly loaded activation[^\n]*waits out the stop budget/i,
+  );
+  expect(readme).toMatch(
+    /configuration error stops nothing[^\n]*adoption still runs/i,
+  );
+  expect(readme).toMatch(
+    /stopping is destructive[^\n]*both the global and the project file[^\n]*no error/i,
+  );
+});
+
+test("documents the fail-closed probe rule and the absence of an external runtime", () => {
+  expect(readme).toMatch(
+    /cannot determine whether a remembered process is alive[^\n]*fails closed/i,
+  );
+  expect(readme).toMatch(
+    /neither stops that process nor starts a duplicate/i,
+  );
+  expect(readme).toMatch(
+    /No external runtime, daemon, or supervisor[^\n]*no runtime dependencies/i,
+  );
+});
+
+test("documents what the registry stores, where, and how it is matched", () => {
+  expect(readme).toContain(
+    "%LOCALAPPDATA%\\opencode\\startup-commands\\<hostname>\\registry.json",
+  );
+  expect(readme).toContain(
+    "~/Library/Application Support/OpenCode/startup-commands/<hostname>/registry.json",
+  );
+  expect(readme).toContain(
+    "$XDG_STATE_HOME/opencode/startup-commands/<hostname>/registry.json",
+  );
+  expect(readme).toMatch(
+    /hash of the command identity[^\n]*PID[^\n]*start token/i,
+  );
+  expect(readme).toMatch(
+    /registry is kept per host[^\n]*`<hostname>` directory[^\n]*shared between machines keeps each machine's processes separate/i,
+  );
+  expect(readme).toMatch(
+    /renaming the machine starts a new registry[^\n]*forgotten, never stopped[^\n]*launches fresh ones[^\n]*by hand after a rename/i,
+  );
+  expect(readme).toMatch(
+    /re-identified by the `\(pid, startToken\)` pair, never by the token alone/i,
+  );
+  expect(readme).toMatch(
+    /no token contains a PID[^\n]*can carry the same token/i,
+  );
+  expect(readme).toMatch(/every comparison[^\n]*keyed by PID/i);
+  expect(readme).toMatch(
+    /deleted registry file[^\n]*`\(pid, startToken\)` pair no longer matches[^\n]*forgotten rather than stopped[^\n]*starts fresh/i,
+  );
+  expect(readme).toMatch(
+    /cannot be parsed is set aside[^\n]*continues with an empty registry[^\n]*forgotten rather than stopped/i,
+  );
+  expect(readme).toMatch(
+    /cannot be read at all is left in place[^\n]*skipped for that activation rather than started/i,
+  );
+  expect(readme).toMatch(
+    /Executable paths, arguments, environment variables, and project paths are never recorded/i,
+  );
+});
+
+test("documents the one-time 1.1.0 to 1.2.0 migration", () => {
+  expect(readme).toContain("### Upgrading from 1.1.0");
+  expect(readme).toMatch(
+    /1\.1\.0 kept no record[^\n]*1\.2\.0 cannot identify them/i,
+  );
+  expect(readme).toMatch(
+    /^1\. Stop any helpers left running by `stopOnExit: false`\.\r?$/m,
+  );
+  expect(readme).toMatch(/^2\. Fully exit every OpenCode process\.\r?$/m);
+  expect(readme).toMatch(/^3\. Install 1\.2\.0\.\r?$/m);
+  expect(readme).toMatch(
+    /^4\. Start OpenCode\. New `stopOnExit: false` commands are now remembered\.\r?$/m,
+  );
 });
 
 test("documents platform stop escalation, limitations, and sanitized events", () => {

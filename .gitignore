@@ -19,3 +19,7 @@ Thumbs.db
 *.tsbuildinfo
 
 /docs/
+
+# Local agent workspaces
+.claude/
+.superpowers/
