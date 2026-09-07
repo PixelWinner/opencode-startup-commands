@@ -38,8 +38,16 @@ const allowedPaths = [
   "dist/config.d.ts",
   "dist/core.js",
   "dist/core.d.ts",
+  "dist/durable-lock.js",
+  "dist/durable-lock.d.ts",
+  "dist/durable-registry.js",
+  "dist/durable-registry.d.ts",
+  "dist/error-code.js",
+  "dist/error-code.d.ts",
   "dist/logger.js",
   "dist/logger.d.ts",
+  "dist/process-identity.js",
+  "dist/process-identity.d.ts",
   "dist/process-tree.d.ts",
   "dist/process-tree.js",
   "dist/server.js",
@@ -50,7 +58,7 @@ const allowedPaths = [
 
 const releaseManifest = {
   name: "opencode-startup-commands",
-  version: "1.1.0",
+  version: "1.2.0",
   main: "./dist/server.js",
   types: "./dist/server.d.ts",
   exports: {
@@ -76,10 +84,10 @@ const releaseManifest = {
 };
 
 const packResult = {
-  id: "opencode-startup-commands@1.1.0",
+  id: "opencode-startup-commands@1.2.0",
   name: "opencode-startup-commands",
-  version: "1.1.0",
-  filename: "opencode-startup-commands-1.1.0.tgz",
+  version: "1.2.0",
+  filename: "opencode-startup-commands-1.2.0.tgz",
   size: 1024,
   unpackedSize: 4096,
   shasum: "0123456789abcdef0123456789abcdef01234567",
@@ -126,7 +134,7 @@ describe("package file contract", () => {
     }
   });
 
-  test("requires every path in the exact 15-file package", () => {
+  test("requires every path in the exact 23-file package", () => {
     for (const requiredPath of allowedPaths) {
       expect(() =>
         validatePackageFilePaths(
@@ -189,8 +197,8 @@ describe("package limits and identity", () => {
   test("requires the exact package identity and tarball filename", () => {
     expect(validatePackageIdentity(packResult)).toEqual({
       name: "opencode-startup-commands",
-      version: "1.1.0",
-      filename: "opencode-startup-commands-1.1.0.tgz",
+      version: "1.2.0",
+      filename: "opencode-startup-commands-1.2.0.tgz",
     });
 
     for (const changed of [
@@ -653,10 +661,10 @@ test("formats a deterministic SHA-256 checksum line", () => {
   expect(
     formatChecksumLine(
       digest,
-      "opencode-startup-commands-1.1.0.tgz",
+      "opencode-startup-commands-1.2.0.tgz",
     ),
   ).toBe(
-    `${digest}  opencode-startup-commands-1.1.0.tgz\n`,
+    `${digest}  opencode-startup-commands-1.2.0.tgz\n`,
   );
 });
 

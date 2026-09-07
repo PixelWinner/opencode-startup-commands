@@ -217,7 +217,7 @@ describe("release workflow modes and permissions", () => {
     expect(tagPackage).toContain("process.env.RELEASE_TAG");
     expect(tagPackage).toContain("process.env.GITHUB_OUTPUT");
     expect(tagPackage).toContain("tarball_name=");
-    expect(tagPackage).not.toContain("opencode-startup-commands-1.1.0.tgz");
+    expect(tagPackage).not.toContain("opencode-startup-commands-1.2.0.tgz");
     expect(tagPackage).not.toContain("contents: write");
   });
 
@@ -269,6 +269,45 @@ describe("release workflow modes and permissions", () => {
     expect(release).toContain("node --version");
     expect(release).toContain("npm --version");
     expect(release).toContain("gh --version");
+  });
+});
+
+describe("the durable suites ride the existing three-platform test matrix", () => {
+  function getMatrixOperatingSystems(job: string): string[] {
+    const match = job.match(/matrix:\n\s+os:\n((?:\s*- \S+\n)+)/);
+    if (!match) {
+      return [];
+    }
+    return match[1]
+      .split("\n")
+      .map((line) => line.trim().replace(/^-\s*/, ""))
+      .filter(Boolean)
+      .sort();
+  }
+
+  test("test keeps exactly the three-OS matrix and the unnarrowed full suite", () => {
+    const expectedOperatingSystems = [
+      "macos-latest",
+      "ubuntu-latest",
+      "windows-latest",
+    ].sort();
+
+    for (const workflow of workflows) {
+      const testJob = getJob(workflow, "test");
+      expect(testJob).not.toBe("");
+      expect(getMatrixOperatingSystems(testJob)).toEqual(
+        expectedOperatingSystems,
+      );
+      expect(testJob).toMatch(/^\s*- run: bun test\s*$/m);
+
+      expect(testJob).not.toContain("tests/durable-integration.test.ts");
+      expect(testJob).not.toContain("durable-integration:");
+
+      const verifyBuild = getJob(workflow, "verify-build");
+      expect(verifyBuild).toContain("run: bun run typecheck");
+      expect(verifyBuild).not.toContain("tests/durable-integration.test.ts");
+      expect(verifyBuild).not.toContain("durable-integration:");
+    }
   });
 });
 

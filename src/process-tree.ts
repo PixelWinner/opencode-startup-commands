@@ -1,5 +1,6 @@
 import { spawn as spawnProcess } from "node:child_process";
 import { win32 } from "node:path";
+import { getErrorCode } from "./error-code.js";
 
 export type ProcessTreeFailureReason =
   | "missing-pid"
@@ -84,15 +85,6 @@ type RootProbeResult =
   | { status: "present" }
   | { status: "lost" }
   | { status: "failed"; reason: ProcessTreeFailureReason };
-
-function getErrorCode(error: unknown): string | undefined {
-  if (typeof error !== "object" || error === null || !("code" in error)) {
-    return undefined;
-  }
-
-  const code = (error as { code?: unknown }).code;
-  return typeof code === "string" ? code : undefined;
-}
 
 function signalProcess(
   kill: NonNullable<ProcessTreeControllerOptions["kill"]>,

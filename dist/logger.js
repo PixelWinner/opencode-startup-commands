@@ -47,6 +47,18 @@ function formatConsoleEvent(event) {
             return `stop forced ${formatStopContext(event)}`;
         case "command.stop-failed":
             return `stop failed ${formatStopContext(event)} reason=${event.reason}`;
+        case "durable.record-adopted":
+            return `record adopted scope=${event.scope} index=${event.index} name=${formatName(event.name)} pid=${event.pid}`;
+        case "durable.record-dropped":
+            return `record dropped scope=${event.scope}${event.index === undefined ? "" : ` index=${event.index}`}${event.name === undefined ? "" : ` name=${formatName(event.name)}`} pid=${event.pid}`;
+        case "durable.record-unverifiable":
+            return `record unverifiable scope=${event.scope}${event.index === undefined ? "" : ` index=${event.index}`}${event.name === undefined ? "" : ` name=${formatName(event.name)}`}${event.pid === undefined ? "" : ` pid=${event.pid}`}`;
+        case "durable.reconciled":
+            return `reconciled scope=${event.scope} stoppedCount=${event.stoppedCount}`;
+        case "durable.registry-quarantined":
+            return "registry quarantined";
+        case "durable.unavailable":
+            return `durable unavailable cause=${event.cause}`;
         default:
             return assertNeverEvent(event);
     }
@@ -75,6 +87,18 @@ function formatFileEvent(event) {
             return `${event.type} ${formatStopContext(event)}`;
         case "command.stop-failed":
             return `${event.type} ${formatStopContext(event)} reason=${event.reason}`;
+        case "durable.record-adopted":
+            return `${event.type} scope=${event.scope} index=${event.index} name=${formatName(event.name)} pid=${event.pid}`;
+        case "durable.record-dropped":
+            return `${event.type} scope=${event.scope}${event.index === undefined ? "" : ` index=${event.index}`}${event.name === undefined ? "" : ` name=${formatName(event.name)}`} pid=${event.pid}`;
+        case "durable.record-unverifiable":
+            return `${event.type} scope=${event.scope}${event.index === undefined ? "" : ` index=${event.index}`}${event.name === undefined ? "" : ` name=${formatName(event.name)}`}${event.pid === undefined ? "" : ` pid=${event.pid}`}`;
+        case "durable.reconciled":
+            return `${event.type} scope=${event.scope} stoppedCount=${event.stoppedCount}`;
+        case "durable.registry-quarantined":
+            return event.type;
+        case "durable.unavailable":
+            return `${event.type} cause=${event.cause}`;
         default:
             return assertNeverEvent(event);
     }

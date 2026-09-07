@@ -1,4 +1,27 @@
-import { runStartupCommands, } from "./core.js";
+import { normalizeProjectRoot, runStartupCommands, } from "./core.js";
+async function resolveOwner(dependencies) {
+    if (!dependencies.resolveOwnerIdentity) {
+        return undefined;
+    }
+    try {
+        return await dependencies.resolveOwnerIdentity();
+    }
+    catch {
+        return undefined;
+    }
+}
+function buildRunOptions(dependencies, worktree, authoritative) {
+    const { registry, identity } = dependencies;
+    if (!registry || !identity) {
+        return undefined;
+    }
+    const projectRootHash = registry.hashProjectRoot(normalizeProjectRoot(worktree));
+    return {
+        authoritative,
+        projectRootHash,
+        resolveOwner: () => resolveOwner(dependencies),
+    };
+}
 function writeConfigDiagnostic(diagnostic, logger) {
     try {
         if (diagnostic.reason === "invalid-command") {
@@ -17,7 +40,6 @@ function writeConfigDiagnostic(diagnostic, logger) {
         });
     }
     catch {
-        // Logging must not prevent valid commands from reaching core execution.
     }
 }
 export function createStartupCommandsServer(dependencies) {
@@ -32,7 +54,9 @@ export function createStartupCommandsServer(dependencies) {
             ]) {
                 writeConfigDiagnostic(diagnostic, dependencies.logger);
             }
-            const activation = await runStartupCommands([...globalConfig.commands, ...projectConfig.commands], dependencies);
+            const runOptions = buildRunOptions(dependencies, input.worktree, globalConfig.diagnostics.length === 0 &&
+                projectConfig.diagnostics.length === 0);
+            const activation = await runStartupCommands([...globalConfig.commands, ...projectConfig.commands], dependencies, runOptions);
             return {
                 dispose: () => activation.dispose(),
             };
